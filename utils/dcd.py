@@ -25,9 +25,16 @@ def dc_region_idx():
     if not mode:
         return 0;
     m = mode.split("_")
-    if not m:
+    if not m or len(m) < 3:
         return 0
-    return int(m[2])
+    try:
+        return int(m[2])
+    except ValueError:
+        # If the suffix is not a number (like 'a'), map it to a number
+        # 'a' -> 0, 'b' -> 1, etc.
+        if m[2].isalpha() and len(m[2]) == 1:
+            return ord(m[2].lower()) - ord('a')
+        return 0
 
 def create_add_extent_qmp_input(dev, extents):
     op="cxl-add-dynamic-capacity"

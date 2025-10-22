@@ -167,7 +167,7 @@ def setup_kernel(kernel_dir):
         kpatch=test_dir+"/test-workflows/mctp/mctp-patches-kernel.patch"
         cmd="cd %s; git am --reject %s"%(dire, kpatch)
         tools.sh_cmd(cmd, echo=True)
-        tools.build_kernel(dire, install = False)
+        tools.build_kernel(dire)
     else:
         print("mctp patches already applied, continue...")
 
