@@ -1,27 +1,3 @@
- # Table of Contents
-
-- [Table of Contents](#table-of-contents)
-- [How DCD works in Qemu Emulation - One VM case](#how-dcd-works-in-qemu-emulation---one-vm-case)
-  - [Create region](#create-region)
-    - [Check memdev size](#check-memdev-size)
-    - [create a region based on the size](#create-a-region-based-on-the-size)
-    - [Kernel Log](#kernel-log)
-  - [Add Dynamic Capacity](#add-dynamic-capacity)
-      - [Add an exent of 0-128MB](#add-an-exent-of-0-128mb)
-    - [QMP command sent by the cxl-tool.py](#qmp-command-sent-by-the-cxl-toolpy)
-    - [QEMU Handles the cxl-add-dynamic-capacity QMP command](#qemu-handles-the-cxl-add-dynamic-capacity-qmp-command)
-    - [Kernel processes the DCD event](#kernel-processes-the-dcd-event)
-    - [Qemu add the extent accepted to the device](#qemu-add-the-extent-accepted-to-the-device)
-  - [Show Extents](#show-extents)
-    - [QMP commands issued by the cxl-tool.py](#qmp-commands-issued-by-the-cxl-toolpy)
-    - [Qemu returns extents](#qemu-returns-extents)
-  - [Release Extent](#release-extent)
-    - [QMP commands issued by the cxl-tool.py](#qmp-commands-issued-by-the-cxl-toolpy-1)
-    - [Qemu handles cxl-release-dynamic-capacity QMP command](#qemu-handles-cxl-release-dynamic-capacity-qmp-command)
-    - [Kernel processes the DCD event](#kernel-processes-the-dcd-event-1)
-    - [Qemu mem device releases the Extent](#qemu-mem-device-releases-the-extent)
-- [How DCD works in Qemu Emulation - Two VMs case](#how-dcd-works-in-qemu-emulation---two-vms-case)
-
 # How DCD works in Qemu Emulation - One VM case
 ## Create region
 ### Check memdev size
@@ -75,7 +51,7 @@ We can see that Get Dynamic Capacity Extent List command (0x4801) is issued by t
 
 ## Add Dynamic Capacity
 
-#### Add an exent of 0-128MB
+### Add an exent of 0-128MB
 ```
 $ ./cxl-tool.py --dcd-test mem0
 region0 already created for mem0, exit
