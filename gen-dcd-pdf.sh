@@ -13,9 +13,12 @@ if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
   sudo apt-get install -y "${MISSING_PKGS[@]}"
 fi
 
-pandoc DCD-Inside-Out.md -o DCD-Qemu-Explanation.pdf \
-  -V geometry=a3paper \
-  -V geometry:landscape \
+# Wrap all lines in the Markdown file to 100 characters for better PDF formatting
+fold -s -w 100 DCD-Inside-Out.md > DCD-Inside-Out-wrap.md
+
+# Generate PDF from the wrapped Markdown file, using A4 paper and listings config
+pandoc DCD-Inside-Out-wrap.md -o DCD-Qemu-Explanation.pdf \
+  -V geometry=a4paper \
   -V geometry:left=0.5in \
   -V geometry:right=0.5in \
   -V geometry:top=0.5in \
