@@ -14,10 +14,10 @@ if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
 fi
 
 # Wrap all lines in the Markdown file to 100 characters for better PDF formatting
-fold -s -w 100 DCD-Inside-Out.md > DCD-Inside-Out-wrap.md
+fold -s -w 100 DCD-Explanation.md > DCD-Explanation-wrap.md
 
 # Generate PDF from the wrapped Markdown file, using A4 paper and listings config
-pandoc DCD-Inside-Out-wrap.md -o DCD-Qemu-Explanation.pdf \
+pandoc DCD-Explanation-wrap.md -o DCD-Qemu-Explanation.pdf \
   -V geometry=a4paper \
   -V geometry:left=0.5in \
   -V geometry:right=0.5in \
