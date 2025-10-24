@@ -94,11 +94,13 @@ Then it will exuecute "cat /tmp/qmp-add.json |ncat localhost $qmp_port"
 
 ### QEMU Handles the cxl-add-dynamic-capacity QMP command
 
-QEMU will call the qmp_cxl_add_dynamic_capacity function to process the command. Based on the policy of "prescriptive",     
-qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_ADD_CAPACITY. This function will     
-perform sanity checks such as block size alignment and ensuring the range is within the region. If everything is    
-correct, the extent will be added to an extent pending list and a DC event record will be generated with type   
-DC_EVENT_ADD_CAPACITY together with the extent info. Then an interrupt will be asserted to notify the host.
+QEMU will call the qmp_cxl_add_dynamic_capacity function to process the command.Based 
+on the policy of "prescriptive",qmp_cxl_process_dynamic_capacity_prescriptive will be 
+called with DC_EVENT_ADD_CAPACITY. This function will perform sanity checks such as block
+size alignment and ensuring the range is within the region. If everything is correct, 
+the extent will be added to an extent pending list and a DC event record will be 
+generated with type DC_EVENT_ADD_CAPACITY together with the extent info. Then an 
+interrupt will be asserted to notify the host.
 
 ### Kernel processes the DCD event
 The correponding kernel log is below.
@@ -230,10 +232,10 @@ The format of the command is below.
 	}
 ```
 ### Qemu handles cxl-release-dynamic-capacity QMP command
-QEMU calls qmp_cxl_release_dynamic_capacity to releaes the extent. Based on the policy of "prescriptive",   
-qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_RELEASE_CAPACITY. Some sanity  
-checks will be done for the extent specified. If passed, A DC event record will be generated with type  
-DC_EVENT_RELEASE_CAPACITY. The event record also has the extent to be released. And an interrupt will be  
+QEMU calls qmp_cxl_release_dynamic_capacity to releaes the extent. Based on the policy of "prescriptive", 
+qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_RELEASE_CAPACITY. Some sanity
+checks will be done for the extent specified. If passed, A DC event record will be generated with type
+DC_EVENT_RELEASE_CAPACITY. The event record also has the extent to be released. And an interrupt will be
 asserted to notify the host.  
 
 ### Kernel processes the DCD event
