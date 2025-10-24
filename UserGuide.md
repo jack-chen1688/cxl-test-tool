@@ -534,7 +534,7 @@ Total offline memory:               0B
 #### 1.1. Fix Code Error in utils/mctp.py
 
 Below is the fix.
-
+```
 --- a/utils/mctp.py
 +++ b/utils/mctp.py
 @@ -167,7 +167,7 @@ def setup_kernel(kernel_dir):
@@ -545,7 +545,7 @@ Below is the fix.
 +        tools.build_kernel(dire)
      else:
          print("mctp patches already applied, continue...")
-
+```
 #### 1.2. Run Kernel Setup for FM
 
 ```bash
