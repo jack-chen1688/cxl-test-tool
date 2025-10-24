@@ -1,9 +1,7 @@
-# How DCD works in Qemu Emulation - One VM case
+ # Table of Contents
 
-## Table of Contents
-
+- [Table of Contents](#table-of-contents)
 - [How DCD works in Qemu Emulation - One VM case](#how-dcd-works-in-qemu-emulation---one-vm-case)
-  - [Table of Contents](#table-of-contents)
   - [Create region](#create-region)
     - [Check memdev size](#check-memdev-size)
     - [create a region based on the sizego](#create-a-region-based-on-the-sizego)
@@ -11,10 +9,15 @@
   - [Add Dynamic Capacity](#add-dynamic-capacity)
       - [Add an exent of 0-128MB](#add-an-exent-of-0-128mb)
     - [QMP command sent by the cxl-tool.py](#qmp-command-sent-by-the-cxl-toolpy)
-    - [Qemu handles cxl-add-dynamic-capacity](#qemu-handles-cxl-add-dynamic-capacity)
+    - [QEMU Handles cxl-add-dynamic-capacity](#qemu-handles-cxl-add-dynamic-capacity)
     - [Kernel processes the DCD event](#kernel-processes-the-dcd-event)
+  - [Show Extents](#show-extents)
+    - [QMP commands issued by the cxl-tool.py](#qmp-commands-issued-by-the-cxl-toolpy)
+    - [Qemu returns extents](#qemu-returns-extents)
+  - [Release Extent](#release-extent)
 - [How DCD works in Qemu Emulation - Two VMs case](#how-dcd-works-in-qemu-emulation---two-vms-case)
 
+# How DCD works in Qemu Emulation - One VM case
 ## Create region
 ### Check memdev size
 ```
@@ -108,12 +111,15 @@ $ cat /tmp/qmp-add.json
 ```
 Then it will exuecute "cat /tmp/qmp-add.json |ncat localhost $qmp_port"
 
-### Qemu handles cxl-add-dynamic-capacity
-
-Qemu will call qmp_cxl_add_dynamic_capacity function to process the command. Based on the policy of "prescriptive",  
-qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_ADD_CAPACITY. This function will   
 do sanity check like block size alignment, range within the region, etc... If OK, the extent will be added for   
 the mem device. An event will be generated and interrupt will be asserted to let host know.
+### QEMU Handles cxl-add-dynamic-capacity
+
+QEMU will call the qmp_cxl_add_dynamic_capacity function to process the command. Based on the policy of "prescriptive",   
+qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_ADD_CAPACITY. This function will   
+perform sanity checks such as block size alignment and ensuring the range is within the region. If everything is  
+correct, the extent will be added for the memory device. An event will be generated and an interrupt will be asserted   
+to notify the host.
 
 ### Kernel processes the DCD event
 The correponding kernel log is below.
@@ -149,17 +155,92 @@ Kernel send a command of "Get Event Records" (0x0100) to retrieve the DCD event 
 [ 9130.436519] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
 ```
 
-Kernel issues three commands below.
-Add Dynamic Capacity Response - 0x4802
-Clear Event Records           - 0x0101
-Get Event Records             - 0x0100
+Kernel issues three mailbox commands above.  
+Add Dynamic Capacity Response - 0x4802  
+Clear Event Records           - 0x0101  
+Get Event Records             - 0x0100  
+
+## Show Extents
+
+### QMP commands issued by the cxl-tool.py
+Below is the operation to print extent.
+```
+Choose OP: 0: add, 1: release, 2: print extent, 9: exit
+Choice: 2
+cat /tmp/qmp-show.json|ncat localhost 4445
+{"QMP": {"version": {"qemu": {"micro": 90, "minor": 2, "major": 9}, "package": "v6.2.0-28065-g3537a06886-dirty"}, "capabilities": ["oob"]}}
+{"return": {}}
+{"return": {}}
+{"return": {}}
+Print accepted extent info:
+0: [0x0 - 0x8000000]
+In total, 1 extents printed!
+Print pending-to-add extent info:
+In total, 0 extents printed!
+```
+The QMP commands issued by the cxl-tool.py are created in the create_display_extents_qmp_input function.
+```
+def create_display_extents_qmp_input(dev):
+    op="cxl-display-accepted-dc-extents"
+    op2="cxl-display-pending-to-add-dc-extents"
+
+    body=[
+    { "execute": "qmp_capabilities" }
+    ,
+    { "execute": "%s"%op,
+     "arguments": {
+         "path": "/machine/peripheral/%s"%dev,
+         "output": "%s"%extent_file
+         }
+     },
+    { "execute": "%s"%op2,
+     "arguments": {
+         "path": "/machine/peripheral/%s"%dev,
+          "output": "/tmp/dc-extent.txt"
+      }
+    }
+    ]
+```
+
+### Qemu returns extents
+Qemu calls qmp_cxl_display_accepted_dc_extents and  qmp_cxl_display_pending_to_add_dc_extents  
+and return the extents that are accepted extends or pending to add. 
 
 
+## Release Extent
 
+```
+Choose OP: 0: add, 1: release, 2: print extent, 9: exit
+Choice: 1
+Input extent to release, for example (unit: MB): 0-128[,128-256]
+Extents: 0-128
+cat /tmp/qmp-rm.json|ncat localhost 4445
+{"QMP": {"version": {"qemu": {"micro": 90, "minor": 2, "major": 9}, "package": "v6.2.0-28065-g3537a06886-dirty"}, "capabilities": ["oob"]}}
+{"return": {}}
+{"return": {}}
+```
 
-
-
-
-
+```
+[17993.005454] cxl_core:cxl_mem_get_event_records:1412: cxl_pci 0000:10:00.0: Reading event logs: 10
+[17993.005959] cxl_pci:__cxl_pci_mbox_send_cmd:263: cxl_pci 0000:10:00.0: Sending command: 0x0100
+[17993.006414] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
+[17993.006951] cxl_core:cxl_handle_dcd_event_records:1316: cxl_pci 0000:10:00.0: DCD event release : DPA:0x0 LEN:0x8000000
+[17993.007689] cxl_core:__cxl_dpa_to_region:2869: cxl decoder3.0: dpa:0x0 mapped in region:region0
+[17993.008212] cxl_core:cxlr_rm_extent:331:  extent0.0: Remove region extent HPA [range 0x0000000000000000-0x0000000007ffffff]
+[17993.008802] cxl_core:cxlr_notify_extent:285: cxl_dax_region dax_region0: Trying notify: type 1 HPA [range 0x0000000000000000-0x0000000007ffffff]
+[17993.009482] cxl_core:cxlr_notify_extent:305: cxl_dax_region dax_region0: Notify: type 1 HPA [range 0x0000000000000000-0x0000000007ffffff]
+[17993.010123] dax:__dax_release_resource:191: cxl_dax_region dax_region0: Extent release resource [mem 0x1290000000-0x1297ffffff flags 0x80000200]
+[17993.010788] cxl_core:region_extent_unregister:117:  extent0.0: DAX region rm extent HPA [range 0x0000000000000000-0x0000000007ffffff]
+[17993.011422] dax:__dax_release_resource:191: cxl_dax_region dax_region0: Extent release resource (null)
+[17993.011916] cxl_core:cxled_release_extent:72: cxl decoder3.0: Remove extent [range 0x0000000000000000-0x0000000007ffffff] (00000000-0000-0000-0000-000000000000)
+[17993.012678] cxl_core:memdev_release_extent:1203: cxl_pci 0000:10:00.0: Release response dpa [range 0xffff8881045e1fc8-0x0000000000000000]
+[17993.013377] cxl_pci:__cxl_pci_mbox_send_cmd:263: cxl_pci 0000:10:00.0: Sending command: 0x4803
+[17993.013843] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
+[17993.014326] cxl_core:cxl_clear_event_record:1099: cxl_pci 0000:10:00.0: Event log '4': Clearing 2
+[17993.014799] cxl_pci:__cxl_pci_mbox_send_cmd:263: cxl_pci 0000:10:00.0: Sending command: 0x0101
+[17993.015277] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
+[17993.015762] cxl_pci:__cxl_pci_mbox_send_cmd:263: cxl_pci 0000:10:00.0: Sending command: 0x0100
+[17993.016229] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
+```
 
 # How DCD works in Qemu Emulation - Two VMs case
