@@ -19,6 +19,7 @@
     - [QMP commands issued by the cxl-tool.py](#qmp-commands-issued-by-the-cxl-toolpy-1)
     - [Qemu handles cxl-release-dynamic-capacity](#qemu-handles-cxl-release-dynamic-capacity)
     - [Kernel processes the DCD event](#kernel-processes-the-dcd-event-1)
+    - [Qemu released the extent](#qemu-released-the-extent)
 - [How DCD works in Qemu Emulation - Two VMs case](#how-dcd-works-in-qemu-emulation---two-vms-case)
 
 # How DCD works in Qemu Emulation - One VM case
@@ -255,8 +256,9 @@ The format of the command is below.
 ### Qemu handles cxl-release-dynamic-capacity
 QEMU calls qmp_cxl_release_dynamic_capacity to releaes the extent. Based on the policy of "prescriptive",   
 qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_RELEASE_CAPACITY. Some sanity  
-checks will be done for the extent specified. If passed, the extent list will be updated for the type 3   
-device. An event will be generated and an interrupt will be asserted to notify the host.  
+checks will be done for the extent specified. If passed, A DC event record will be generated with type  
+DC_EVENT_RELEASE_CAPACITY. The event record also has the extent to be released. And an interrupt will be  
+asserted to notify the host.  
 
 ### Kernel processes the DCD event
 
@@ -292,12 +294,18 @@ Kernel send a command of "Get Event Records" (0x0100) to retrieve the DCD event 
 [17993.015762] cxl_pci:__cxl_pci_mbox_send_cmd:263: cxl_pci 0000:10:00.0: Sending command: 0x0100
 [17993.016229] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
 ```
-Kernel send more commands to the type3 device.  
-Release Dynamic Capacity      - 0x4803  
+Kernel calls cxl_send_dc_response which will issue the mailbox command of CXL_MBOX_OP_RELEASE_DC (0x4803).  
+If extent can be released, it will also be in the payload of the command.
+
+Two more commands are sent by the kernel.
 Clear Event Records           - 0x0101  
 Get Event Records             - 0x0100  
 
 
-cmd_dcd_release_dyn_cap
+
+### Qemu released the extent
+Qemu side will call cmd_dcd_release_dyn_cap to process the mailbox command and get the extent to be  
+released and removed it from its extent list.
+
 
 # How DCD works in Qemu Emulation - Two VMs case
