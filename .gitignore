@@ -7,3 +7,6 @@
 */*.pyc
 utils/__pycache__
 utils/__pycache__/*
+venv/
+libcxlmi/
+ndctl/
