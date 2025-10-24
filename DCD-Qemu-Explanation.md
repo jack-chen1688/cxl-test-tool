@@ -4,7 +4,7 @@
 - [How DCD works in Qemu Emulation - One VM case](#how-dcd-works-in-qemu-emulation---one-vm-case)
   - [Create region](#create-region)
     - [Check memdev size](#check-memdev-size)
-    - [create a region based on the sizego](#create-a-region-based-on-the-sizego)
+    - [create a region based on the size](#create-a-region-based-on-the-size)
     - [Kernel Log](#kernel-log)
   - [Add Dynamic Capacity](#add-dynamic-capacity)
       - [Add an exent of 0-128MB](#add-an-exent-of-0-128mb)
@@ -37,7 +37,7 @@ $./cxl-tool.py -C "cxl list -i -m mem0"
   }
 ]
 ```
-### create a region based on the sizego 
+### create a region based on the size
 cxl create-region -m mem0 -d decoder0.0 -s 2147483648 -t dynamic_ram_a
 
 ### Kernel Log
