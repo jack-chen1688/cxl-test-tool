@@ -1,5 +1,6 @@
 #!/bin/bash
-# Check and install prerequisites
+
+# Check and install system prerequisites
 REQUIRED_PKGS=(pandoc texlive-full)
 MISSING_PKGS=()
 for pkg in "${REQUIRED_PKGS[@]}"; do
@@ -13,11 +14,14 @@ if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
   sudo apt-get install -y "${MISSING_PKGS[@]}"
 fi
 
+fold -s -w 100 DCD-Qemu-Explanation.md > DCD-Qemu-Explanation-wrap.md
 # Wrap all lines in the Markdown file to 100 characters for better PDF formatting
-fold -s -w 100 DCD-Explanation.md > DCD-Explanation-wrap.md
+python3 number_and_toc_md.py DCD-Qemu-Explanation-wrap.md DCD-Qemu-Explanation-Final.md
+# markdown-toc DCD-Qemu-Explanation-Final.md
+
 
 # Generate PDF from the wrapped Markdown file, using A4 paper and listings config
-pandoc DCD-Explanation-wrap.md -o DCD-Qemu-Explanation.pdf \
+pandoc DCD-Qemu-Explanation-Final.md -o DCD-Qemu-Explanation.pdf \
   -V geometry=a4paper \
   -V geometry:left=0.5in \
   -V geometry:right=0.5in \
