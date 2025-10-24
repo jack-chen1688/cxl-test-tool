@@ -103,6 +103,35 @@ generated with type DC_EVENT_ADD_CAPACITY together with the extent info. Then an
 interrupt will be asserted to notify the host.
 
 ### Kernel processes the DCD event
+
+Kernel will get the interrupt and process the event in the following function. 
+
+```
+static irqreturn_t cxl_event_thread(int irq, void *id)
+{
+	struct cxl_dev_id *dev_id = id;
+	struct cxl_dev_state *cxlds = dev_id->cxlds;
+	struct cxl_memdev_state *mds = to_cxl_memdev_state(cxlds);
+	u32 status;
+
+	do {
+		/*
+		 * CXL 3.0 8.2.8.3.1: The lower 32 bits are the status;
+		 * ignore the reserved upper 32 bits
+		 */
+		status = readl(cxlds->regs.status + CXLDEV_DEV_EVENT_STATUS_OFFSET);
+		/* Ignore logs unknown to the driver */
+		status &= CXLDEV_EVENT_STATUS_ALL;
+		if (!status)
+			break;
+		cxl_mem_get_event_records(mds, status);
+		cond_resched();
+	} while (status);
+
+	return IRQ_HANDLED;
+}
+```
+
 The correponding kernel log is below.
 ```
 [ 9130.419501] cxl_core:cxl_mem_get_event_records:1412: cxl_pci 0000:10:00.0: Reading event logs: 10
@@ -193,7 +222,7 @@ def create_display_extents_qmp_input(dev):
 
 ### Qemu returns extents
 Qemu calls qmp_cxl_display_accepted_dc_extents and  qmp_cxl_display_pending_to_add_dc_extents  
-and return the extents that are accepted extends or pending to add. 
+and return the extents that are accepted or pending to add. 
 
 
 ## Release Extent
@@ -244,7 +273,7 @@ Below is the kernel log during the operation of release DC extent.
 ```
 [17993.005454] cxl_core:cxl_mem_get_event_records:1412: cxl_pci 0000:10:00.0: Reading event logs: 10
 ```
-10 is the hex value from the event status register, bit 4 (CXLDEV_EVENT_STATUS_DCD) is set.
+10 is the hex value from the event status register, bit 4 (CXLDEV_EVENT_STATUS_DCD) is set. Then
 cxl_mem_get_records_log(mds, CXL_EVENT_TYPE_DCD) will be called
 
 ```
@@ -272,8 +301,8 @@ Kernel send a command of "Get Event Records" (0x0100) to retrieve the DCD event 
 [17993.015762] cxl_pci:__cxl_pci_mbox_send_cmd:263: cxl_pci 0000:10:00.0: Sending command: 0x0100
 [17993.016229] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
 ```
-Kernel calls cxl_send_dc_response which will issue the mailbox command of CXL_MBOX_OP_RELEASE_DC (0x4803).  
-If the extent can be released, it will also be in the payload of the command.
+Kernel calls cxl_send_dc_response which will issue the mailbox command of CXL_MBOX_OP_RELEASE_DC (0x4803).
+If the extent can be released, it will also be put in the payload of the command.
 
 Two more commands are sent by the kernel.  
 Clear Event Records           - 0x0101  
@@ -282,7 +311,7 @@ Get Event Records             - 0x0100
 
 
 ### Qemu mem device releases the Extent
-Qemu side will call cmd_dcd_release_dyn_cap to process the mailbox command and get the extent to be  
+Qemu side will call cmd_dcd_release_dyn_cap to process the mailbox command and get the extent to be
 released and removed it from its extent list.
 
 
