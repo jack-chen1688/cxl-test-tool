@@ -1,4 +1,69 @@
 # How DCD works in Qemu Emulation - One VM case
+
+## Kernel and Qemu source
+kernel_url="https://github.com/weiny2/linux-kernel.git"
+kernel_branch="dcd-v6-2025-04-13"
+qemu_url="git+ssh://git@github.com/moking/qemu-jic-clone.git"
+qemu_branch='dcd-compression'
+
+## DCD configuration during CXL driver loading
+
+During driver loading, cxl_pci_probe is called, which will call cxl_conifgure_dcd
+if dcd is supported.
+'''
+	if (cxl_dcd_supported(mds))
+		cxl_configure_dcd(mds, &range_info);
+'''
+
+cxl_configure_dcd calls cxl_dev_dc_identify, which will call cxl_get_dc_config.
+```
+static int cxl_get_dc_config(struct cxl_mailbox *mbox, u8 start_partition,
+			     struct cxl_mbox_get_dc_config_out *dc_resp,
+			     size_t dc_resp_size)
+{
+	struct cxl_mbox_get_dc_config_in get_dc = (struct cxl_mbox_get_dc_config_in) {
+		.partition_count = CXL_MAX_DC_PARTITIONS,
+		.start_partition_index = start_partition,
+	};
+	struct cxl_mbox_cmd mbox_cmd = (struct cxl_mbox_cmd) {
+		.opcode = CXL_MBOX_OP_GET_DC_CONFIG,
+		.payload_in = &get_dc,
+		.size_in = sizeof(get_dc),
+		.size_out = dc_resp_size,
+		.payload_out = dc_resp,
+		.min_out = 1,
+	};
+	int rc;
+
+	rc = cxl_internal_send_cmd(mbox, &mbox_cmd);
+	if (rc < 0)
+		return rc;
+
+	dev_dbg(mbox->host, "Read %d/%d DC partitions\n",
+		dc_resp->partitions_returned, dc_resp->avail_partition_count);
+	return dc_resp->partitions_returned;
+}
+```
+
+The CXL_MBOX_OP_GET_DC_CONFIG (Get Dynamic Capacity Configuration, 0x4800) command will be 
+send to the device to get the DCD info.
+
+### Qemu log of the CCI command
+```
+CXL Command: set=0x48 cmd=0x00 (DCD_GET_DC_CONFIG) len_in=2
+  Payload (hex):
+    0000: 08 00
+CXL Command Response: set=0x48 cmd=0x00 (DCD_GET_DC_CONFIG) ret=0x00 len_out=104
+  Response Payload (hex):
+    0000: 02 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0010: 08 00 00 00 00 00 00 00 00 00 00 80 00 00 00 00
+    0020: 00 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0030: 00 00 00 80 00 00 00 00 08 00 00 00 00 00 00 00
+    0040: 00 00 00 80 00 00 00 00 00 00 20 00 00 00 00 00
+    0050: 01 00 00 00 00 00 00 00 00 02 00 00 00 02 00 00
+    0060: 00 00 00 00 00 00 00 00
+  ```
+
 ## Create region
 ### Check memdev size
 ```
@@ -48,6 +113,15 @@ We can see that Get Dynamic Capacity Extent List command (0x4801) is issued by t
 [ 7929.115628] cxl_core:cxl_bus_probe:2087: cxl_region region0: probe: 0
 ```
 
+### Qmeu log of the cci command
+```
+CXL Command: set=0x48 cmd=0x01 (DCD_GET_DYNAMIC_CAPACITY_EXTENT_LIST) len_in=8
+  Payload (hex):
+    0000: 32 00 00 00 00 00 00 00
+CXL Command Response: set=0x48 cmd=0x01 (DCD_GET_DYNAMIC_CAPACITY_EXTENT_LIST) ret=0x00 len_out=16
+  Response Payload (hex):
+    0000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
 
 ## Add Dynamic Capacity
 
@@ -176,6 +250,41 @@ Get Event Records             - 0x0100
 At Qemu side, cmd_dcd_add_dyn_cap_rsp will be called and add the accepted extent passed by kernel to     
 its extent list and update extent count. The extent will aslo be removed from the pending extent list  
 where it was appended in qmp_cxl_add_dynamic_capacity.
+
+### Qemu log of the cci commands
+```
+CXL Command: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) len_in=1
+  Payload (hex):
+    0000: 04
+CXL Command Response: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) ret=0x00 len_out=160
+  Response Payload (hex):
+    0000: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0010: 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    0020: ca 95 af a7 f1 83 40 18 8c 2f 95 26 8e 10 1a 2a
+    0030: 80 01 00 00 01 00 00 00 da a1 e6 61 78 8c 71 18
+    0040: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0050: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0060: 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00
+    0070: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0080: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0090: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+CXL Command: set=0x48 cmd=0x02 (DCD_ADD_DYNAMIC_CAPACITY_RESPONSE) len_in=32
+  Payload (hex):
+    0000: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0010: 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00
+CXL Command Response: set=0x48 cmd=0x02 (DCD_ADD_DYNAMIC_CAPACITY_RESPONSE) ret=0x00 len_out=0
+CXL Command: set=0x01 cmd=0x01 (EVENTS_CLEAR_RECORDS) len_in=8
+  Payload (hex):
+    0000: 04 00 01 00 00 00 01 00
+CXL Command Response: set=0x01 cmd=0x01 (EVENTS_CLEAR_RECORDS) ret=0x00 len_out=0
+CXL Command: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) len_in=1
+  Payload (hex):
+    0000: 04
+CXL Command Response: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) ret=0x00 len_out=32
+  Response Payload (hex):
+    0000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
 
 ## Show Extents
 
@@ -315,4 +424,41 @@ Qemu side will call cmd_dcd_release_dyn_cap to process the mailbox command and g
 released and removed it from its extent list.
 
 
+### Qemu log of the cci commands
+```
+CXL Command: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) len_in=1
+  Payload (hex):
+    0000: 04
+CXL Command Response: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) ret=0x00 len_out=160
+  Response Payload (hex):
+    0000: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0010: 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    0020: ca 95 af a7 f1 83 40 18 8c 2f 95 26 8e 10 1a 2a
+    0030: 80 01 00 00 02 00 00 00 6c 44 95 89 9d 8c 71 18
+    0040: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0050: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0060: 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00
+    0070: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0080: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0090: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+CXL Command: set=0x48 cmd=0x03 (DCD_RELEASE_DYNAMIC_CAPACITY) len_in=32
+  Payload (hex):
+    0000: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0010: 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00
+CXL Command Response: set=0x48 cmd=0x03 (DCD_RELEASE_DYNAMIC_CAPACITY) ret=0x00 len_out=0
+CXL Command: set=0x01 cmd=0x01 (EVENTS_CLEAR_RECORDS) len_in=8
+  Payload (hex):
+    0000: 04 00 01 00 00 00 02 00
+CXL Command Response: set=0x01 cmd=0x01 (EVENTS_CLEAR_RECORDS) ret=0x00 len_out=0
+CXL Command: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) len_in=1
+  Payload (hex):
+    0000: 04
+CXL Command Response: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) ret=0x00 len_out=32
+  Response Payload (hex):
+    0000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    0010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
 # How DCD works in Qemu Emulation - Two VMs case
+
+TBD
