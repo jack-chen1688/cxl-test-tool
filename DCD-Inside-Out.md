@@ -9,7 +9,7 @@
   - [Add Dynamic Capacity](#add-dynamic-capacity)
       - [Add an exent of 0-128MB](#add-an-exent-of-0-128mb)
     - [QMP command sent by the cxl-tool.py](#qmp-command-sent-by-the-cxl-toolpy)
-    - [QEMU Handles cxl-add-dynamic-capacity](#qemu-handles-cxl-add-dynamic-capacity)
+    - [QEMU Handles the cxl-add-dynamic-capacity QMP command](#qemu-handles-the-cxl-add-dynamic-capacity-qmp-command)
     - [Kernel processes the DCD event](#kernel-processes-the-dcd-event)
     - [Qemu add the extent accepted to the device](#qemu-add-the-extent-accepted-to-the-device)
   - [Show Extents](#show-extents)
@@ -17,9 +17,9 @@
     - [Qemu returns extents](#qemu-returns-extents)
   - [Release Extent](#release-extent)
     - [QMP commands issued by the cxl-tool.py](#qmp-commands-issued-by-the-cxl-toolpy-1)
-    - [Qemu handles cxl-release-dynamic-capacity](#qemu-handles-cxl-release-dynamic-capacity)
+    - [Qemu handles cxl-release-dynamic-capacity QMP command](#qemu-handles-cxl-release-dynamic-capacity-qmp-command)
     - [Kernel processes the DCD event](#kernel-processes-the-dcd-event-1)
-    - [Qemu released the extent](#qemu-released-the-extent)
+    - [Qemu mem device releases the Extent](#qemu-mem-device-releases-the-extent)
 - [How DCD works in Qemu Emulation - Two VMs case](#how-dcd-works-in-qemu-emulation---two-vms-case)
 
 # How DCD works in Qemu Emulation - One VM case
@@ -116,7 +116,7 @@ $ cat /tmp/qmp-add.json
 ```
 Then it will exuecute "cat /tmp/qmp-add.json |ncat localhost $qmp_port"
 
-### QEMU Handles cxl-add-dynamic-capacity
+### QEMU Handles the cxl-add-dynamic-capacity QMP command
 
 QEMU will call the qmp_cxl_add_dynamic_capacity function to process the command. Based on the policy of "prescriptive",     
 qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_ADD_CAPACITY. This function will     
@@ -253,7 +253,7 @@ The format of the command is below.
 	  }
 	}
 ```
-### Qemu handles cxl-release-dynamic-capacity
+### Qemu handles cxl-release-dynamic-capacity QMP command
 QEMU calls qmp_cxl_release_dynamic_capacity to releaes the extent. Based on the policy of "prescriptive",   
 qmp_cxl_process_dynamic_capacity_prescriptive will be called with DC_EVENT_RELEASE_CAPACITY. Some sanity  
 checks will be done for the extent specified. If passed, A DC event record will be generated with type  
@@ -295,15 +295,15 @@ Kernel send a command of "Get Event Records" (0x0100) to retrieve the DCD event 
 [17993.016229] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
 ```
 Kernel calls cxl_send_dc_response which will issue the mailbox command of CXL_MBOX_OP_RELEASE_DC (0x4803).  
-If extent can be released, it will also be in the payload of the command.
+If the extent can be released, it will also be in the payload of the command.
 
-Two more commands are sent by the kernel.
+Two more commands are sent by the kernel.  
 Clear Event Records           - 0x0101  
 Get Event Records             - 0x0100  
 
 
 
-### Qemu released the extent
+### Qemu mem device releases the Extent
 Qemu side will call cmd_dcd_release_dyn_cap to process the mailbox command and get the extent to be  
 released and removed it from its extent list.
 
