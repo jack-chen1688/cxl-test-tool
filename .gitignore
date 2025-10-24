@@ -10,3 +10,4 @@ utils/__pycache__/*
 venv/
 libcxlmi/
 ndctl/
+*.pdf
