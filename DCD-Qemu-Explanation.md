@@ -1,19 +1,19 @@
 # How DCD works in QEMU Emulation - One VM case
 
 ## Kernel and QEMU source
-kernel_url="https://github.com/weiny2/linux-kernel.git"
-kernel_branch="dcd-v6-2025-04-13"
-qemu_url="git+ssh://git@github.com/moking/qemu-jic-clone.git"
-qemu_branch='dcd-compression'
+kernel_url="https://github.com/weiny2/linux-kernel.git"  
+kernel_branch="dcd-v6-2025-04-13"  
+qemu_url="git+ssh://git@github.com/moking/qemu-jic-clone.git"  
+qemu_branch='dcd-compression'  
 
 ## DCD configuration during CXL driver loading
 
 During driver loading, cxl_pci_probe is called, which will call cxl_configure_dcd
 if DCD is supported.
-'''
+```
 	if (cxl_dcd_supported(mds))
 		cxl_configure_dcd(mds, &range_info);
-'''
+```
 
 cxl_configure_dcd calls cxl_dev_dc_identify, which will call cxl_get_dc_config.
 ```
@@ -78,7 +78,7 @@ $./cxl-tool.py -C "cxl list -i -m mem0"
   }
 ]
 ```
-### create a region based on the size
+### Create a region based on the size
 cxl create-region -m mem0 -d decoder0.0 -s 2147483648 -t dynamic_ram_a
 
 ### Kernel Log
@@ -396,8 +396,7 @@ The kernel sends a command of "Get Event Records" (0x0100) to retrieve the DCD e
 [17993.015762] cxl_pci:__cxl_pci_mbox_send_cmd:263: cxl_pci 0000:10:00.0: Sending command: 0x0100
 [17993.016229] cxl_pci:cxl_pci_mbox_wait_for_doorbell:74: cxl_pci 0000:10:00.0: Doorbell wait took 0ms
 ```
-The kernel sends a command of "Get Event Records" (0x0100) to retrieve the DCD event and processes it.
-```
+
 Kernel calls cxl_send_dc_response which will issue the mailbox command of CXL_MBOX_OP_RELEASE_DC (0x4803).
 If the extent can be released, it will also be put in the payload of the command.
 
