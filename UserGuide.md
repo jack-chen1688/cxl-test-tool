@@ -1,21 +1,21 @@
-# CXL Test Tool User Guide
+# Experiment DCD using cxl-test-tool 
 
-## Test Environment
+## 1. Test Environment
 
 - **OS**: Ubuntu 24.04
 - **Software**: https://github.com/moking/cxl-test-tool
 - **Base Commit**: d55e292 (2025-07-15)
 
-## Acronym Definition
+## 2. Acronym Definition
 
 | Acronym | Definition |
 |---------|------------|
 | FM | Fabric Manager |
 | DCD | Dynamic Capacity Device |
 
-## Useful Commands
+## 3. Useful Commands
 
-### VM Access
+### 3.1. VM Access
 
 ```
 # Log into the VM
@@ -26,13 +26,13 @@
 ```
 
 
-## QEMU Environment Setup
+## 4. QEMU Environment Setup
 
-### Set up .vars.config
+### 4.1. Set up .vars.config
 
 Created `.vars.config` using `run_vars.example.fm-dcd` as base:
 
-```
+```bash
 run_opts_file=/tmp/run_opts
 dbg_opt="cxl_acpi.dyndbg=+fplm cxl_pci.dyndbg=+fplm cxl_core.dyndbg=+fplm cxl_mem.dyndbg=+fplm cxl_pmem.dyndbg=+fplm cxl_port.dyndbg=+fplm cxl_region.dyndbg=+fplm cxl_test.dyndbg=+fplm cxl_mock.dyndbg=+fplm cxl_mock_mem.dyndbg=+fplm dax.dyndbg=+fplm dax_cxl.dyndbg=+fplm device_dax.dyndbg=+fplm"
 edac_debug="edac_debug_level=4"
@@ -64,7 +64,7 @@ libcxlmi_branch="fixes"
 libcxlmi_url="https://github.com/moking/libcxlmi.git"
 ```
 
-### Build QEMU
+### 4.2. Build QEMU
 
 ```
 ./cxl-tool.py --setup-qemu
@@ -75,7 +75,7 @@ This will build the QEMU executable inside `QEMU_ROOT`:
 ~/cxl/jic/qemu/build/qemu-system-x86_64
 ```
 
-### Create QEMU Image
+### 4.3. Create QEMU Image
 
 ```
 ./cxl-tool.py --create-image
@@ -83,7 +83,7 @@ This will build the QEMU executable inside `QEMU_ROOT`:
 
 This creates an image at `~/cxl/images/qemu-image.img`, which corresponds to `$QEMU_IMG` in `.vars.config`.
 
-### Setup Kernel
+### 4.4. Setup Kernel
 
 Run the command below and select option **2** when prompted:
 
@@ -112,9 +112,9 @@ This command will build the kernel in `~/cxl/linux-dcd`.
 
 
 
-## Test DCD on One VM
+## 5. Test DCD on One VM
 
-### Create a Topology
+### 5.1. Create a Topology
 
 Based on `.cxl-topology.xml.bak`, create the file `.cxl-topology.xml` as follows:
 
@@ -134,7 +134,7 @@ Based on `.cxl-topology.xml.bak`, create the file `.cxl-topology.xml` as follows
 </cxl>
 ```
 
-### Run QEMU with the Created Topology
+### 5.2. Run QEMU with the Created Topology
 
 ```
 ./cxl-tool.py --create-topo --run
@@ -147,7 +147,7 @@ Starting VM...
 QEMU instance is up, access it: ssh root@localhost -p 2024
 ```
 
-### Configure DNS Server
+### 5.3. Configure DNS Server
 
 > **Issue**: By default, `/etc/resolv.conf` inside the QEMU image uses `8.8.8.8` as DNS server, which does not work.
 
@@ -159,9 +159,9 @@ ssh root@localhost -p 2024 "sed -i 's/8.8.8.8/10.0.2.3/g' /etc/resolv.conf"
 
 With this change, you can install packages inside the VM using `apt`.
 
-### Install ndctl
+### 5.4. Install ndctl
 
-#### Install Prerequisite Package
+#### 5.4.1. Install Prerequisite Package
 
 ndctl cannot be compiled by default due to missing `systemd-dev`:
 
@@ -169,7 +169,7 @@ ndctl cannot be compiled by default due to missing `systemd-dev`:
 ./cxl-tool.py -C "apt install -y systemd-dev"
 ```
 
-#### Install ndctl
+#### 5.4.2. Install ndctl
 
 ```
 ./cxl-tool.py --install-ndctl
@@ -177,9 +177,9 @@ ndctl cannot be compiled by default due to missing `systemd-dev`:
 
 
 
-## Run DCD Test
+## 6. Run DCD Test
 
-### Fix for Latest Commit Issue
+### 6.1. Fix for Latest Commit Issue
 
 > **Note**: Latest commit `d55e292` has a small issue where the default mode is `ram_a`:
 > ```
@@ -188,9 +188,9 @@ ndctl cannot be compiled by default due to missing `systemd-dev`:
 > ```
 > This will cause `./cxl-tool.py --dcd-test mem0` to fail.
 
-**Solution Options:**
+There are two ways to solve it. 
 
-#### Option 1: Modify the `dc_region_idx` function in `utils/dcd.py`
+#### 6.1.1. Option 1: Modify the `dc_region_idx` function in `utils/dcd.py`
 
 ```
 def dc_region_idx():
@@ -213,7 +213,7 @@ def dc_region_idx():
 
 With this change, `./cxl-tool.py --dcd-test mem0` works without problem.
 
-#### Option 2: Run with explicit mode parameter
+#### 6.1.2. Option 2: Run with explicit mode parameter
 
 ```
 ./cxl-tool.py --dcd-test mem0 -M ram_0
@@ -221,7 +221,7 @@ With this change, `./cxl-tool.py --dcd-test mem0` works without problem.
 
 
 
-### Create a DC Region, Add an Extent, and Create a DAX Device
+### 6.2. Create a DC Region, Add an Extent, and Create a DAX Device
 
 After modifying `dc_region_idx`, run the following command:
 
@@ -344,11 +344,11 @@ Total offline memory:               0B
 
 
 
-### Destroy the DAX Device, Release Extent, Add a Different Extent
+### 6.3. Destroy the DAX Device, Release Extent, Add a Different Extent
 
 > **Important**: You need to reconfigure the DAX device to `devdax` mode and destroy the device. Otherwise, recreating a DAX device will fail with an error.
 
-#### Step 1: Destroy the DAX Device
+#### 6.3.1. Step 1: Destroy the DAX Device
 
 ```
 ./cxl-tool.py --login
@@ -398,7 +398,7 @@ daxctl destroy-device dax0.1
 destroyed 1 device
 ```
 
-#### Step 2: Release Extent, Add New Extent, and Create DAX Device
+#### 6.3.2. Step 2: Release Extent, Add New Extent, and Create DAX Device
 
 ```
 ./cxl-tool.py --dcd-test mem0
@@ -499,11 +499,11 @@ Total offline memory:               0B
 
 ```
 
-## Test DCD using Fabric Manager (FM) VM
+## 7. Test DCD using Fabric Manager (FM) VM
 
-### Set up Kernel for FM
+### 7.1. Set up Kernel for FM
 
-#### Fix Code Error in utils/mctp.py
+#### 7.1.1. Fix Code Error in utils/mctp.py
 
 Below is the fix.
 ```
@@ -518,7 +518,7 @@ Below is the fix.
      else:
          print("mctp patches already applied, continue...")
 ```
-#### Run Kernel Setup for FM
+#### 7.1.2. Run Kernel Setup for FM
 
 ```
 ./cxl-tool.py --setup-kernel-fm
@@ -555,7 +555,7 @@ CXL (Compute Express Link) Devices Support (CXL_BUS) [M/n/y/?] m
 
 > **Tip**: The `test-workflows/fm-test.sh` script provides examples of how to test FM.
 
-### Run VM with FM_TARGET Topology
+### 7.2. Run VM with FM_TARGET Topology
 
 ```
 ./cxl-tool.py --run -T FM_TARGET
@@ -569,7 +569,7 @@ Starting VM...
 QEMU instance is up, access it: ssh root@localhost -p 2024
 ```
 
-### Create a Region on FM_TARGET VM
+### 7.3. Create a Region on FM_TARGET VM
 
 ```
 ./cxl-tool.py --create-dcR mem0
@@ -614,9 +614,9 @@ cxl memdev: cmd_enable_memdev: enabled 1 mem
 cxl region: cmd_create_region: created 1 region
 ```
 
-### Run VM with FM_CLIENT Topology
+### 7.4. Run VM with FM_CLIENT Topology
 
-#### Create FM Image
+#### 7.4.1. Create FM Image
 
 Use `qemu-image.img` as base for `qemu-image-fm.img`:
 
@@ -624,7 +624,7 @@ Use `qemu-image.img` as base for `qemu-image-fm.img`:
 cp ~/cxl/images/qemu-image.img ~/cxl/images/qemu-image-fm.img
 ```
 
-#### Run FM Client VM
+#### 7.4.2. Run FM Client VM
 
 ```
 ./cxl-tool.py --attach-fm -T FM_CLIENT
@@ -638,7 +638,7 @@ Starting VM...
 QEMU instance is up, access it: ssh root@localhost -p 2025
 ```
 
-### Install libcxlmi-fm
+### 7.5. Install libcxlmi-fm
 
 ```
 ./cxl-tool.py --install-libcxlmi-fm
@@ -807,7 +807,7 @@ INFO: calculating backend command to run: /usr/bin/ninja -C /tmp/libcxlmi/build
 INFO: Install libcxlmi succeeded, run /tmp/libcxlmi/build/examples/cxl-mctp on VM to test
 ```
 
-### Set up MCTP-FM
+### 7.6. Set up MCTP-FM
 
 ```
 ./cxl-tool.py --setup-mctp-fm
@@ -974,7 +974,7 @@ NAME                              TYPE      SIGNATURE RESULT/VALUE FLAGS
 .SupportedMessageTypes            property  ay        2 7 8        const
 ```
 
-### Login to FM Client and Run DCD Test via FM
+### 7.7. Login to FM Client and Run DCD Test via FM
 
 ```
 ./cxl-tool.py --login-fm
@@ -1181,7 +1181,7 @@ Offering 128MB to the host..
 Total capcity offered: 4096MB, number of offering: 14
 ```
 
-### Check Extents Allocated on FM_TARGET VM
+### 7.8. Check Extents Allocated on FM_TARGET VM
 
 You can run `cxl list -N -u` on FM_TARGET to show the extents added via `cxl-dcd`:
 
@@ -1250,3 +1250,4 @@ You can run `cxl list -N -u` on FM_TARGET to show the extents added via `cxl-dcd
     ]
   }
 ]
+```
