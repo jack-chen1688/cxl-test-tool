@@ -818,7 +818,7 @@ ninja: Entering directory `/tmp/libcxlmi/build'
 [7/17] Compiling C object examples/cxl-dcd.p/cxl-dcd.c.o
 [8/17] Compiling C object examples/cxl-ioctl.p/cxl-ioctl.c.o
 [9/17] Compiling C object examples/cxl-mctp.p/cxl-mctp.c.o
-../examples/cxl-mctp.c:710:12: warning: ‘test_fmapi_set_dc_region_config’ defined but not used [-Wunused-function]
+../examples/cxl-mctp.c:710:12: warning: 'test_fmapi_set_dc_region_config' defined but not used [-Wunused-function]
   710 | static int test_fmapi_set_dc_region_config(struct cxlmi_endpoint *ep)
       |            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [10/17] Compiling C object src/libcxlmi.so.p/cxlmi_cxlmi.c.o
@@ -1271,7 +1271,7 @@ You can run `cxl list -N -u` on FM_TARGET to show the extents added via `cxl-dcd
             "length":"512.00 MiB (536.87 MB)",
             "uuid":"00000000-0000-0000-0000-000000000000"
           },
-	      …
+	      ...
         ]
       }
     ]
