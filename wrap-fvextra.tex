@@ -1,0 +1,16 @@
+\usepackage{fvextra} % loads fancyvrb
+\fvset{
+  breaklines=true,
+  breakanywhere=true,
+  obeytabs=true,
+  tabsize=2,
+  breaksymbol=
+}
+
+% With --no-highlight Pandoc emits the built-in 'verbatim' environment.
+% Map it to fancyvrb's Verbatim (which understands breaklines).
+\AtBeginDocument{%
+  \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+    breaklines, breakanywhere, obeytabs, tabsize=2
+  }
+}
