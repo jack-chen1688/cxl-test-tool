@@ -1,32 +1,5 @@
 # CXL Test Tool User Guide
 
-## Table of Contents
-
-1. [Test Environment](#test-environment)
-2. [Acronym Definition](#acronym-definition)
-3. [Useful Commands](#useful-commands)
-4. [QEMU Environment Setup](#qemu-environment-setup)
-   - Set up .vars.config
-   - Build QEMU
-   - Create QEMU Image
-   - Setup Kernel
-5. [Test DCD on One VM](#test-dcd-on-one-vm)
-   - Create Topology
-   - Run QEMU
-   - Configure DNS
-   - Install ndctl
-   - Run DCD Test
-6. [Test DCD using Fabric Manager (FM) VM](#test-dcd-using-fabric-manager-fm-vm)
-   - Setup Kernel for FM
-   - Run FM_TARGET VM
-   - Run FM_CLIENT VM
-   - Install libcxlmi-fm
-   - Setup MCTP-FM
-   - Run DCD Test via FM
-   - Check Extents on FM_TARGET
-
-
-
 ## Test Environment
 
 - **OS**: Ubuntu 24.04
@@ -188,7 +161,7 @@ With this change, you can install packages inside the VM using `apt`.
 
 ### Install ndctl
 
-#### 4.1. Install Prerequisite Package
+#### Install Prerequisite Package
 
 ndctl cannot be compiled by default due to missing `systemd-dev`:
 
@@ -196,7 +169,7 @@ ndctl cannot be compiled by default due to missing `systemd-dev`:
 ./cxl-tool.py -C "apt install -y systemd-dev"
 ```
 
-#### 4.2. Install ndctl
+#### Install ndctl
 
 ```
 ./cxl-tool.py --install-ndctl
@@ -1277,5 +1250,3 @@ You can run `cxl list -N -u` on FM_TARGET to show the extents added via `cxl-dcd
     ]
   }
 ]
-
-
