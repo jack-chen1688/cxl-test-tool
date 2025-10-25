@@ -56,7 +56,7 @@
 
 ## QEMU Environment Setup
 
-### 1. Set up .vars.config
+### Set up .vars.config
 
 Created `.vars.config` using `run_vars.example.fm-dcd` as base:
 
@@ -92,7 +92,7 @@ libcxlmi_branch="fixes"
 libcxlmi_url="https://github.com/moking/libcxlmi.git"
 ```
 
-### 2. Build QEMU
+### Build QEMU
 
 ```bash
 ./cxl-tool.py --setup-qemu
@@ -103,7 +103,7 @@ This will build the QEMU executable inside `QEMU_ROOT`:
 ~/cxl/jic/qemu/build/qemu-system-x86_64
 ```
 
-### 3. Create QEMU Image
+### Create QEMU Image
 
 ```bash
 ./cxl-tool.py --create-image
@@ -111,7 +111,7 @@ This will build the QEMU executable inside `QEMU_ROOT`:
 
 This creates an image at `~/cxl/images/qemu-image.img`, which corresponds to `$QEMU_IMG` in `.vars.config`.
 
-### 4. Setup Kernel
+### Setup Kernel
 
 Run the command below and select option **2** when prompted:
 
@@ -142,7 +142,7 @@ This command will build the kernel in `~/cxl/linux-dcd`.
 
 ## Test DCD on One VM
 
-### 1. Create a Topology
+### Create a Topology
 
 Based on `.cxl-topology.xml.bak`, create the file `.cxl-topology.xml` as follows:
 
@@ -162,7 +162,7 @@ Based on `.cxl-topology.xml.bak`, create the file `.cxl-topology.xml` as follows
 </cxl>
 ```
 
-### 2. Run QEMU with the Created Topology
+### Run QEMU with the Created Topology
 
 ```bash
 ./cxl-tool.py --create-topo --run
@@ -175,7 +175,7 @@ Starting VM...
 QEMU instance is up, access it: ssh root@localhost -p 2024
 ```
 
-### 3. Configure DNS Server
+### Configure DNS Server
 
 > **Issue**: By default, `/etc/resolv.conf` inside the QEMU image uses `8.8.8.8` as DNS server, which does not work.
 
@@ -187,7 +187,7 @@ ssh root@localhost -p 2024 "sed -i 's/8.8.8.8/10.0.2.3/g' /etc/resolv.conf"
 
 With this change, you can install packages inside the VM using `apt`.
 
-### 4. Install ndctl
+### Install ndctl
 
 #### 4.1. Install Prerequisite Package
 
@@ -529,9 +529,9 @@ Total offline memory:               0B
 
 ## Test DCD using Fabric Manager (FM) VM
 
-### 1. Set up Kernel for FM
+### Set up Kernel for FM
 
-#### 1.1. Fix Code Error in utils/mctp.py
+#### Fix Code Error in utils/mctp.py
 
 Below is the fix.
 ```
@@ -546,7 +546,7 @@ Below is the fix.
      else:
          print("mctp patches already applied, continue...")
 ```
-#### 1.2. Run Kernel Setup for FM
+#### Run Kernel Setup for FM
 
 ```bash
 ./cxl-tool.py --setup-kernel-fm
@@ -583,7 +583,7 @@ CXL (Compute Express Link) Devices Support (CXL_BUS) [M/n/y/?] m
 
 > **Tip**: The `test-workflows/fm-test.sh` script provides examples of how to test FM.
 
-### 2. Run VM with FM_TARGET Topology
+### Run VM with FM_TARGET Topology
 
 ```bash
 ./cxl-tool.py --run -T FM_TARGET
@@ -597,7 +597,7 @@ Starting VM...
 QEMU instance is up, access it: ssh root@localhost -p 2024
 ```
 
-### 3. Create a Region on FM_TARGET VM
+### Create a Region on FM_TARGET VM
 
 ```bash
 ./cxl-tool.py --create-dcR mem0
@@ -642,9 +642,9 @@ cxl memdev: cmd_enable_memdev: enabled 1 mem
 cxl region: cmd_create_region: created 1 region
 ```
 
-### 4. Run VM with FM_CLIENT Topology
+### Run VM with FM_CLIENT Topology
 
-#### 4.1. Create FM Image
+#### Create FM Image
 
 Use `qemu-image.img` as base for `qemu-image-fm.img`:
 
@@ -652,7 +652,7 @@ Use `qemu-image.img` as base for `qemu-image-fm.img`:
 cp ~/cxl/images/qemu-image.img ~/cxl/images/qemu-image-fm.img
 ```
 
-#### 4.2. Run FM Client VM
+#### Run FM Client VM
 
 ```bash
 ./cxl-tool.py --attach-fm -T FM_CLIENT
@@ -666,7 +666,7 @@ Starting VM...
 QEMU instance is up, access it: ssh root@localhost -p 2025
 ```
 
-### 5. Install libcxlmi-fm
+### Install libcxlmi-fm
 
 ```bash
 ./cxl-tool.py --install-libcxlmi-fm
@@ -835,7 +835,7 @@ INFO: calculating backend command to run: /usr/bin/ninja -C /tmp/libcxlmi/build
 INFO: Install libcxlmi succeeded, run /tmp/libcxlmi/build/examples/cxl-mctp on VM to test
 ```
 
-### 6. Set up MCTP-FM
+### Set up MCTP-FM
 
 ```bash
 ./cxl-tool.py --setup-mctp-fm
@@ -1002,7 +1002,7 @@ NAME                              TYPE      SIGNATURE RESULT/VALUE FLAGS
 .SupportedMessageTypes            property  ay        2 7 8        const
 ```
 
-### 7. Login to FM Client and Run DCD Test via FM
+### Login to FM Client and Run DCD Test via FM
 
 ```bash
 ./cxl-tool.py --login-fm
@@ -1209,7 +1209,7 @@ Offering 128MB to the host..
 Total capcity offered: 4096MB, number of offering: 14
 ```
 
-### 8. Check Extents Allocated on FM_TARGET VM
+### Check Extents Allocated on FM_TARGET VM
 
 You can run `cxl list -N -u` on FM_TARGET to show the extents added via `cxl-dcd`:
 
