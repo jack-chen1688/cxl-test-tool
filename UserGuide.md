@@ -25,7 +25,7 @@
    - Run DCD Test via FM
    - Check Extents on FM_TARGET
 
----
+
 
 ## Test Environment
 
@@ -52,7 +52,6 @@
 ./cxl-tool.py --login-fm
 ```
 
----
 
 ## QEMU Environment Setup
 
@@ -138,7 +137,7 @@ cp /home/jack/work/cxl-test-tool//kconfig.example /home/jack/cxl/linux-dcd/.conf
 
 This command will build the kernel in `~/cxl/linux-dcd`.
 
----
+
 
 ## Test DCD on One VM
 
@@ -203,7 +202,7 @@ ndctl cannot be compiled by default due to missing `systemd-dev`:
 ./cxl-tool.py --install-ndctl
 ```
 
----
+
 
 ## Run DCD Test
 
@@ -247,7 +246,7 @@ With this change, `./cxl-tool.py --dcd-test mem0` works without problem.
 ./cxl-tool.py --dcd-test mem0 -M ram_0
 ```
 
----
+
 
 ### Create a DC Region, Add an Extent, and Create a DAX Device
 
@@ -370,7 +369,7 @@ Total online memory:              8.1G
 Total offline memory:               0B
 ```
 
----
+
 
 ### Destroy the DAX Device, Release Extent, Add a Different Extent
 
