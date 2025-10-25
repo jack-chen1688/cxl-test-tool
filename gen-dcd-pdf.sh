@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Usage: ./gen-dcd-pdf.sh <input.md>
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <input.md>"
+  exit 1
+fi
+
+INPUT_MD="$1"
+BASENAME="$(basename "$INPUT_MD" .md)"
+WRAP_MD="${BASENAME}-wrap.md"
+FINAL_MD="${BASENAME}-final.md"
+OUTPUT_PDF="${BASENAME}.pdf"
+
 # Check and install system prerequisites
 REQUIRED_PKGS=(pandoc texlive-full)
 MISSING_PKGS=()
@@ -14,17 +26,17 @@ if [ ${#MISSING_PKGS[@]} -ne 0 ]; then
   sudo apt-get install -y "${MISSING_PKGS[@]}"
 fi
 
-fold -s -w 100 DCD-Qemu-Explanation.md > DCD-Qemu-Explanation-wrap.md
-# Wrap all lines in the Markdown file to 100 characters for better PDF formatting
-python3 number_and_toc_md.py DCD-Qemu-Explanation-wrap.md DCD-Qemu-Explanation-Final.md
-# markdown-toc DCD-Qemu-Explanation-Final.md
+#pandoc --number-sections "$WRAP_MD" -o "$FINAL_MD"
 
+#python3 number_and_toc_md.py "$WRAP_MD" "$FINAL_MD"
+# markdown-toc "$FINAL_MD"
 
-# Generate PDF from the wrapped Markdown file, using A4 paper and listings config
-pandoc DCD-Qemu-Explanation-Final.md -o DCD-Qemu-Explanation.pdf \
+# Generate PDF from the processed Markdown file, using A4 paper and listings config
+pandoc "$INPUT_MD" -o "$OUTPUT_PDF" \
   -V geometry=a4paper \
-  -V geometry:left=0.5in \
-  -V geometry:right=0.5in \
+  -V geometry:left=0.6in \
+  -V geometry:right=0.6in \
   -V geometry:top=0.5in \
   -V geometry:bottom=0.5in \
-  --listings -H listings-setup.tex
+  --no-highlight  -H wrap-fvextra.tex
+#   --listings -H listings-setup.tex
