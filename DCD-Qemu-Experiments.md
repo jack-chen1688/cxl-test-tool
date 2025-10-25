@@ -1,4 +1,4 @@
-# Experiment DCD using cxl-test-tool 
+# Experiment DCD using QEMU
 
 ## 1. Test Environment
 
