@@ -1260,7 +1260,55 @@ kernel_branch="dcd-v6-2025-04-13"
 qemu_url="git+ssh://git@github.com/moking/qemu-jic-clone.git"  
 qemu_branch='dcd-compression'  
 
-## 2.2. DCD configuration during CXL driver loading
+## 2.2. Patch QEMU source to log CCI commands and their payloads
+
+Added following in cxl-mailbox-utils.c to log CCI commands and their payloads.
+
+```
+diff --git a/hw/cxl/cxl-mailbox-utils.c b/hw/cxl/cxl-mailbox-utils.c
+index bd354d50b9..c2f64bc62d 100644
+--- a/hw/cxl/cxl-mailbox-utils.c
++++ b/hw/cxl/cxl-mailbox-utils.c
+@@ -4133,7 +4133,36 @@ int cxl_process_cci_message(CXLCCI *cci, uint8_t set, uint8_t cmd,
+         }
+     }
+ 
++    qemu_log("CXL Command: set=0x%02x cmd=0x%02x (%s) len_in=%zu\n",
++             set, cmd, cxl_cmd->name, len_in);
++    if (len_in > 0 && pl_in) {
++        qemu_log("  Payload (hex):");
++        for (size_t i = 0; i < len_in && i < 256; i++) {
++            if (i % 16 == 0) qemu_log("\n    %04zx:", i);
++            qemu_log(" %02x", pl_in[i]);
++        }
++        if (len_in > 256) {
++            qemu_log("\n    ... (truncated, total %zu bytes)", len_in);
++        }
++        qemu_log("\n");
++    }
++    
+     ret = (*h)(cxl_cmd, pl_in, len_in, pl_out, len_out, cci);
++
++    qemu_log("CXL Command Response: set=0x%02x cmd=0x%02x (%s) ret=0x%02x len_out=%zu\n",
++             set, cmd, cxl_cmd->name, ret, len_out ? *len_out : 0);
++    if (len_out && *len_out > 0 && pl_out) {
++        qemu_log("  Response Payload (hex):");
++        for (size_t i = 0; i < *len_out && i < 256; i++) {
++            if (i % 16 == 0) qemu_log("\n    %04zx:", i);
++            qemu_log(" %02x", pl_out[i]);
++        }
++        if (*len_out > 256) {
++            qemu_log("\n    ... (truncated, total %zu bytes)", *len_out);
++        }
++        qemu_log("\n");
++    }
++
+     if ((cxl_cmd->effect & CXL_MBOX_BACKGROUND_OPERATION) &&
+         ret == CXL_MBOX_BG_STARTED) {
+         *bg_started = true;
+```
+
+## 2.3. DCD configuration during CXL driver loading
 
 During driver loading, cxl_pci_probe is called, which will call cxl_configure_dcd
 if DCD is supported.
@@ -1302,7 +1350,7 @@ static int cxl_get_dc_config(struct cxl_mailbox *mbox, u8 start_partition,
 The CXL_MBOX_OP_GET_DC_CONFIG (Get Dynamic Capacity Configuration, 0x4800) command will be 
 sent to the device to get the DCD info.
 
-### 2.2.1. QEMU log of the CCI command
+### 2.3.1. QEMU log of the CCI command
 ```
 CXL Command: set=0x48 cmd=0x00 (DCD_GET_DC_CONFIG) len_in=2
   Payload (hex):
@@ -1318,8 +1366,8 @@ CXL Command Response: set=0x48 cmd=0x00 (DCD_GET_DC_CONFIG) ret=0x00 len_out=104
     0060: 00 00 00 00 00 00 00 00
   ```
 
-## 2.3. Create region
-### 2.3.1. Check memdev size
+## 2.4. Create region
+### 2.4.1. Check memdev size
 ```
 $./cxl-tool.py -C "cxl list -i -m mem0"
 [
@@ -1332,10 +1380,10 @@ $./cxl-tool.py -C "cxl list -i -m mem0"
   }
 ]
 ```
-### 2.3.2. Create a region based on the size
+### 2.4.2. Create a region based on the size
 cxl create-region -m mem0 -d decoder0.0 -s 2147483648 -t dynamic_ram_a
 
-### 2.3.3. Kernel Log
+### 2.4.3. Kernel Log
 ``` 
 [ 7929.099585] cxl_core:cxl_region_probe:3571: cxl_region region0: config state: 0
 [ 7929.100130] cxl_core:cxl_bus_probe:2087: cxl_region region0: probe: -6
@@ -1367,7 +1415,7 @@ We can see that Get Dynamic Capacity Extent List command (0x4801) is issued by t
 [ 7929.115628] cxl_core:cxl_bus_probe:2087: cxl_region region0: probe: 0
 ```
 
-### 2.3.4. QEMU log of the CCI command
+### 2.4.4. QEMU log of the CCI command
 ```
 CXL Command: set=0x48 cmd=0x01 (DCD_GET_DYNAMIC_CAPACITY_EXTENT_LIST) len_in=8
   Payload (hex):
@@ -1377,9 +1425,9 @@ CXL Command Response: set=0x48 cmd=0x01 (DCD_GET_DYNAMIC_CAPACITY_EXTENT_LIST) r
     0000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 ```
 
-## 2.4. Add Dynamic Capacity
+## 2.5. Add Dynamic Capacity
 
-### 2.4.1. Add an extent of 0-128MB
+### 2.5.1. Add an extent of 0-128MB
 ```
 $ ./cxl-tool.py --dcd-test mem0
 region0 already created for mem0, exit
@@ -1396,7 +1444,7 @@ cat /tmp/qmp-add.json|ncat localhost 4445
 {"return": {}}
 ```
 
-### 2.4.2. QMP command sent by the cxl-tool.py
+### 2.5.2. QMP command sent by the cxl-tool.py
 
 In the above sequence, cxl-tool.py will create and write the following command to the /tmp/qmp-add.json.
 ```
@@ -1420,11 +1468,11 @@ $ cat /tmp/qmp-add.json
 ```
 Then it will execute "cat /tmp/qmp-add.json |ncat localhost $qmp_port"
 
-### 2.4.3. QEMU Handles the cxl-add-dynamic-capacity QMP command
+### 2.5.3. QEMU Handles the cxl-add-dynamic-capacity QMP command
 
 QEMU will call the `qmp_cxl_add_dynamic_capacity` function to process the command. Based on the "prescriptive" policy, `qmp_cxl_process_dynamic_capacity_prescriptive` will be called with `DC_EVENT_ADD_CAPACITY`. This function performs sanity checks, such as block size alignment and ensuring the range is within the region. If everything is correct, the extent will be added to a pending extent list, and a DC event record of type `DC_EVENT_ADD_CAPACITY` will be generated along with the extent information. Then, an interrupt will be asserted to notify the host.
 
-### 2.4.4. Kernel processes the DCD event
+### 2.5.4. Kernel processes the DCD event
 
 The kernel will get the interrupt and process the event in the following function. 
 
@@ -1494,10 +1542,10 @@ The kernel issues two more mailbox commands
 Clear Event Records           - 0x0101  
 Get Event Records             - 0x0100  
 
-### 2.4.5. QEMU adds the extent accepted to the device
+### 2.5.5. QEMU adds the extent accepted to the device
 At the QEMU side, `cmd_dcd_add_dyn_cap_rsp` will be called and add the accepted extent passed by the kernel to its extent list and update the extent count. The extent will also be removed from the pending extent list where it was appended in `qmp_cxl_add_dynamic_capacity`.
 
-### 2.4.6. QEMU log of the CCI commands
+### 2.5.6. QEMU log of the CCI commands
 ```
 CXL Command: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) len_in=1
   Payload (hex):
@@ -1532,9 +1580,9 @@ CXL Command Response: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) ret=0x00 len_out=32
     0010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 ```
 
-## 2.5. Show Extents
+## 2.6. Show Extents
 
-### 2.5.1. QMP commands issued by the cxl-tool.py
+### 2.6.1. QMP commands issued by the cxl-tool.py
 Below is the operation to print extent.
 ```
 Choose OP: 0: add, 1: release, 2: print extent, 9: exit
@@ -1575,13 +1623,13 @@ def create_display_extents_qmp_input(dev):
     ]
 ```
 
-### 2.5.2. QEMU returns extents
+### 2.6.2. QEMU returns extents
 QEMU calls `qmp_cxl_display_accepted_dc_extents` and `qmp_cxl_display_pending_to_add_dc_extents` and returns the extents that are accepted or pending to add. 
 
 
-## 2.6. Release Extent
+## 2.7. Release Extent
 
-### 2.6.1. QMP commands issued by the cxl-tool.py
+### 2.7.1. QMP commands issued by the cxl-tool.py
 The operation of Release Extent is below.
 ```
 Choose OP: 0: add, 1: release, 2: print extent, 9: exit
@@ -1614,10 +1662,10 @@ The format of the command is below.
 	  }
 	}
 ```
-### 2.6.2. QEMU handles cxl-release-dynamic-capacity QMP command
+### 2.7.2. QEMU handles cxl-release-dynamic-capacity QMP command
 QEMU calls `qmp_cxl_release_dynamic_capacity` to release the extent. Based on the "prescriptive" policy, `qmp_cxl_process_dynamic_capacity_prescriptive` will be called with `DC_EVENT_RELEASE_CAPACITY`. Some sanity checks will be done for the extent specified. If passed, a DC event record will be generated with type `DC_EVENT_RELEASE_CAPACITY`. The event record also has the extent to be released. And an interrupt will be asserted to notify the host.  
 
-### 2.6.3. Kernel processes the DCD event
+### 2.7.3. Kernel processes the DCD event
 
 Below is the kernel log during the operation of release DC extent.
 ```
@@ -1660,11 +1708,11 @@ Get Event Records             - 0x0100
 
 
 
-### 2.6.4. QEMU mem device releases the extent
+### 2.7.4. QEMU mem device releases the extent
 The QEMU side will call `cmd_dcd_release_dyn_cap` to process the mailbox command and get the extent to be released and remove it from its extent list.
 
 
-### 2.6.5. Qemu log of the cci commands
+### 2.7.5. Qemu log of the cci commands
 ```
 CXL Command: set=0x01 cmd=0x00 (EVENTS_GET_RECORDS) len_in=1
   Payload (hex):
